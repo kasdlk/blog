@@ -1,0 +1,23 @@
+server:
+  port: 8089
+
+database:
+  type: "sqlite"
+  path: "blog.db"
+  dbname: "blog"
+
+jwt:
+  secret: "123456"
+  issuer: "blog"
+  audience: "users"
+  expiration_hours: 24
+
+cors:
+  allow_origins: "*"
+  allow_methods: "POST, GET, OPTIONS, PUT, DELETE, UPDATE"
+  allow_headers: "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  allow_credentials: false
+
+file_paths:
+  html_index: "/www/wwwroot/blog.com"
+

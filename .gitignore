@@ -1,0 +1,41 @@
+# Node 相关
+blog/node_modules/*
+blog/npm-debug.log*
+blog/yarn-debug.log*
+blog/yarn-error.log*
+blog/.idea/*
+
+# 构建输出
+build/
+dist/
+.out/
+*.js.map
+
+# 本地环境配置文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+logs
+*.log
+logs/**/*.log
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# IDE 和编辑器相关
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 临时文件
+tmp/
+temp/
