@@ -31,6 +31,7 @@ export const loginUser = async (username: string, password: string) => {
         const response = await api.post('/user/signin', { username, password });
         if (response.data.token) {
             sessionStorage.setItem('token', response.data.token);
+            sessionStorage.setItem('role', response.data.role);
         }
         return response.data;
     } catch (error) {

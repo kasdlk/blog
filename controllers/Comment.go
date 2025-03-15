@@ -35,6 +35,21 @@ func (c *commentController) CreateComment(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// 从 token 中获取 userId（需要认证中间件提前设置）
+	userIDRaw, exists := ctx.Get("userId")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userID, ok := userIDRaw.(uint)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user id in token"})
+		return
+	}
+	// 使用 token 中的 user id，而不是请求体传入的
+	comment.UserID = userID
+
 	// 创建留言记录
 	if err := c.db.Create(&comment).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create comment"})
@@ -83,6 +98,40 @@ func (c *commentController) UpdateComment(ctx *gin.Context) {
 // DeleteComment 删除留言
 func (c *commentController) DeleteComment(ctx *gin.Context) {
 	id := ctx.Param("id")
+
+	// 先查找评论
+	var comment models.Comment
+	if err := c.db.First(&comment, id).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
+		return
+	}
+
+	// 从 token 中获取当前用户ID（需要认证中间件设置）
+	userIDRaw, exists := ctx.Get("userId")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userID, ok := userIDRaw.(uint)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user id in token"})
+		return
+	}
+
+	// 如果当前用户不是评论的创建者，则检查是否为该博客的作者
+	if comment.UserID != userID {
+		var blog models.Blog
+		if err := c.db.First(&blog, comment.BlogID).Error; err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Blog not found"})
+			return
+		}
+		if blog.AuthorID != userID {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": "Permission denied"})
+			return
+		}
+	}
+
+	// 允许删除
 	if err := c.db.Delete(&models.Comment{}, id).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete comment"})
 		return
@@ -112,7 +161,13 @@ func (c *commentController) ListComments(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, comments)
 }
 
-// ListCommentsByBlog 根据博客ID查询留言，支持分页查询
+// 定义一个新的结构体，用于返回评论和昵称
+type CommentWithUser struct {
+	models.Comment
+	Nickname string `json:"nickname"`
+}
+
+// ListCommentsByBlog 根据博客ID查询留言，支持分页查询，返回评论及对应的用户昵称
 func (c *commentController) ListCommentsByBlog(ctx *gin.Context) {
 	blogIDStr := ctx.Param("blog_id")
 	blogID, err := strconv.Atoi(blogIDStr)
@@ -133,9 +188,12 @@ func (c *commentController) ListCommentsByBlog(ctx *gin.Context) {
 	}
 	offset := (page - 1) * limit
 
-	var comments []models.Comment
-	if err := c.db.Where("blog_id = ?", blogID).
-		Order("created_at asc").
+	var comments []CommentWithUser
+	if err := c.db.Table("comments").
+		Select("comments.*, users.nickname").
+		Joins("LEFT JOIN users ON users.id = comments.user_id").
+		Where("comments.blog_id = ?", blogID).
+		Order("comments.created_at asc").
 		Limit(limit).
 		Offset(offset).
 		Find(&comments).Error; err != nil {

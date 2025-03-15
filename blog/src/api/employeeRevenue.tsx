@@ -80,8 +80,9 @@ export const listEmployeeRevenue = async (
     const params: Record<string, string | number | undefined> = {
         page,
         limit,
-        startDate: startDate ? startDate.toISOString() : undefined, // 👈 转换成字符串
-        endDate: endDate ? endDate.toISOString() : undefined,       // 👈 转换成字符串
+        startDate: startDate ? startDate.toISOString().split("T")[0] : undefined,
+        endDate: endDate ? endDate.toISOString().split("T")[0] : undefined,
+
         userId,
     };
 

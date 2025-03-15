@@ -106,7 +106,7 @@ func (c *employeeRevenueController) CreateEmployeeRevenue(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, revenue)
 }
 
-// ✅ GetEmployeeRevenue 获取单条收益记录（限制当前用户）
+// ✅ GetEmployeeRevenue 获取单条收益记录
 func (c *employeeRevenueController) GetEmployeeRevenue(ctx *gin.Context) {
 	id := ctx.Param("id")
 
@@ -210,7 +210,7 @@ func (c *employeeRevenueController) ListEmployeeRevenue(ctx *gin.Context) {
 	limitStr := ctx.DefaultQuery("limit", "10")
 	startDateStr := ctx.Query("startDate")
 	endDateStr := ctx.Query("endDate")
-	employeeIDStr := ctx.Query("employeeId")
+	userIDStr := ctx.Query("userId")
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -228,8 +228,8 @@ func (c *employeeRevenueController) ListEmployeeRevenue(ctx *gin.Context) {
 		Debug() // ✅ 输出SQL到终端
 
 	// ✅ 按用户筛选
-	if employeeIDStr != "" {
-		employeeID, _ := strconv.Atoi(employeeIDStr)
+	if userIDStr != "" {
+		employeeID, _ := strconv.Atoi(userIDStr)
 		query = query.Where("user_id = ?", employeeID)
 	}
 

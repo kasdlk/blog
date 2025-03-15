@@ -1,4 +1,4 @@
-import  { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { listEmployeeRevenue, EmployeeRevenue } from "../../api/employeeRevenue";
 import { getAllUsers, UserProfile } from "../../api/user";
 import DateEmployeeFilter from './DateEmployeeFilter';
@@ -23,16 +23,16 @@ const Dashboard = () => {
 
     // 加载收益数据
     const fetchData = useCallback(
-        debounce(async (start?: Date, end?: Date, user?: number) => {
+        debounce(async (start?: Date, end?: Date, user?: number | null) => {
             try {
                 setLoading(true);
                 setError("");
                 const { data } = await listEmployeeRevenue(
                     1,
                     100,
-                    start || undefined,
-                    end || undefined,
-                    user || undefined
+                    start ?? undefined,
+                    end ?? undefined,
+                    user !== null ? user : undefined
                 );
                 setRevenueList(data);
             } catch (err) {
@@ -45,9 +45,11 @@ const Dashboard = () => {
         []
     );
 
+
     // 当 startDate / endDate / selectedUser 改变时，发起请求
     useEffect(() => {
         fetchData(startDate ?? undefined, endDate ?? undefined, selectedUser ?? undefined);
+
     }, [fetchData, startDate, endDate, selectedUser]);
 
     // 回调给子组件
@@ -66,9 +68,9 @@ const Dashboard = () => {
             <DateEmployeeFilter
                 onDateChange={handleDateChange}
                 onEmployeeChange={handleEmployeeChange}
-                employeeList={employeeList.map(u => ({ id: u.id, nickname: u.nickname }))}
+                employeeList={employeeList.map(u => ({id: u.id, nickname: u.nickname}))}
             />
-            <DataDisplay data={revenueList} loading={loading} error={error} selectedUser={selectedUser} />
+            <DataDisplay data={revenueList} loading={loading} error={error} selectedUser={selectedUser}/>
         </div>
     );
 };

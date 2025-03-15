@@ -11,7 +11,8 @@ type Blog struct {
 	Tags     string `gorm:"type:varchar(255)" json:"tags"`                  // 文章标签（逗号分隔）
 	Status   string `gorm:"type:varchar(50);default:'draft'" json:"status"` // 状态（draft/published）
 
-	Users Users `gorm:"foreignKey:UserID"`
+	Users    Users     `gorm:"foreignKey:UserID"`
+	Comments []Comment `gorm:"foreignKey:BlogID"` // 关联评论
 }
 
 // TableName sets the insert table name for this struct type

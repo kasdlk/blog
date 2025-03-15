@@ -88,9 +88,6 @@ const DataEntryForm: React.FC = () => {
     const handleSubmit = async () => {
         const requiredFields: (keyof SaveEmployeeRevenueDto)[] = [
             "ad_platform",
-            "product_categories",
-            "ad_type",
-            "region",
             "expenditure",
             "order_count",
             "ad_creation_count",
@@ -309,27 +306,25 @@ const DataEntryForm: React.FC = () => {
                         />
 
                         <TextField
+                            type="number" // 使用 type="number"
                             label="广告支出($)"
                             name="expenditure"
                             value={formData.expenditure !== undefined ? formData.expenditure : ""}
                             onChange={(e) => {
                                 const { name, value } = e.target;
-                                // 允许空字符串，或者只允许数字（可添加小数点时根据需求调整正则）
-                                if (value === "" || /^[0-9]+(\.[0-9]*)?$/.test(value)) {
-                                    // 如果符合数字格式，则转换成数字（空字符串时保持空）
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        [name]: value === "" ? "" : Number(value),
-                                    }));
-                                }
+                                // 空字符串或者有效数字时设置值
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    [name]: value === "" ? "" : Number(value),
+                                }));
                             }}
                             size="small"
                             placeholder="请输入广告支出"
                             inputProps={{
-                                inputMode: "numeric",
-                                pattern: "[0-9]*",
+                                inputMode: "decimal", // 允许小数输入
                             }}
                         />
+
                         <TextField
                             label="订单数量"
                             name="order_count"
@@ -353,46 +348,42 @@ const DataEntryForm: React.FC = () => {
                         />
 
                         <TextField
+                            type="number"
                             label="广告新建数量"
                             name="ad_creation_count"
                             value={formData.ad_creation_count !== undefined ? formData.ad_creation_count : ""}
                             onChange={(e) => {
                                 const { name, value } = e.target;
-                                // 只允许整数输入
-                                if (value === "" || /^[0-9]+$/.test(value)) {
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        [name]: value === "" ? "" : Number(value),
-                                    }));
-                                }
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    [name]: value === "" ? "" : Number(value),
+                                }));
                             }}
                             size="small"
                             placeholder="请输入广告新建数量"
                             inputProps={{
                                 inputMode: "numeric",
-                                pattern: "[0-9]*",
+                                step: "1", // 只允许整数
                             }}
                         />
 
                         <TextField
+                            type="number"
                             label="销售额($)"
                             name="revenue"
                             value={formData.revenue !== undefined ? formData.revenue : ""}
                             onChange={(e) => {
                                 const { name, value } = e.target;
-                                // 允许小数点的数字格式
-                                if (value === "" || /^[0-9]+(\.[0-9]*)?$/.test(value)) {
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        [name]: value === "" ? "" : Number(value),
-                                    }));
-                                }
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    [name]: value === "" ? "" : Number(value),
+                                }));
                             }}
                             size="small"
                             placeholder="请输入销售额"
                             inputProps={{
                                 inputMode: "numeric",
-                                pattern: "[0-9]*",
+                                step: "any", // 允许小数
                             }}
                         />
 

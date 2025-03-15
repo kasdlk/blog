@@ -22,6 +22,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { Dayjs } from "dayjs";
+import removeMarkdown from "remove-markdown";
 
 // 定义接口返回类型（参考前端 API 文件中的定义）
 export interface BlogsResponse {
@@ -174,10 +175,8 @@ const BlogManagement: React.FC = () => {
                                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                                         作者：{blog.nickname || "未知作者"}, 分类：{blog.category}, 标签：{blog.tags}
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                        {blog.content.length > 100
-                                            ? blog.content.slice(0, 100) + "..."
-                                            : blog.content}
+                                    <Typography variant="body2" sx={{ mb: 1, color: "#555" }}>
+                                        {removeMarkdown(blog.content).slice(0, 100)}...
                                     </Typography>
                                     <Box sx={{ flexGrow: 1 }} />
                                     <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>

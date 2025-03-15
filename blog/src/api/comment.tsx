@@ -5,10 +5,12 @@ export interface Comment {
     id: number;
     blog_id: number;
     user_id: number;
+    nickname: string;
     content: string;
     parent_id?: number;
     created_at: string;
     updated_at: string;
+
 }
 
 // 创建留言
@@ -62,4 +64,19 @@ export const listCommentsByBlog = async (
 ): Promise<Comment[]> => {
     const response = await api.get<Comment[]>(`/comment/blog/${blog_id}?page=${page}&limit=${limit}`);
     return response.data;
+};
+
+export interface CommentsResponse {
+    data: Comment[];
+    totalPages: number;
+}
+// 如果后端返回直接就是数组
+export const getCommentsByBlog = async (blogId: number, page: number = 1): Promise<Comment[]> => {
+    try {
+        const response = await api.get<Comment[]>(`/comment/blog/${blogId}?page=${page}`);
+        return response.data;
+    } catch (error) {
+        console.error("获取评论失败", error);
+        throw error;
+    }
 };

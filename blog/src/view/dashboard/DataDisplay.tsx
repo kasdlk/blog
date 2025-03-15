@@ -29,7 +29,6 @@ import {
     Alert,
     Tooltip as MuiTooltip
 } from "@mui/material";
-
 import { blue, grey } from '@mui/material/colors';
 
 interface DataDisplayProps {
@@ -97,7 +96,7 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
         );
     }
 
-    // 汇总视图
+    // 当未选中具体员工时，展示聚合视图
     if (selectedUser === null) {
         const aggregatedDataMap = data
             .filter((item) => item.user_id !== undefined)
@@ -138,9 +137,26 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
             })
         );
 
+        // 计算总统计数据
+        const summary = aggregatedData.reduce(
+            (acc, item) => ({
+                revenue: acc.revenue + item.revenue,
+                expenditure: acc.expenditure + item.expenditure,
+                order_count: acc.order_count + item.order_count,
+                ad_creation_count: acc.ad_creation_count + item.ad_creation_count,
+            }),
+            { revenue: 0, expenditure: 0, order_count: 0, ad_creation_count: 0 }
+        );
+
+        const averageROI =
+            aggregatedData.length > 0
+                ? aggregatedData.reduce((sum, item) => sum + item.roi, 0) /
+                aggregatedData.length
+                : 0;
+
         return (
             <Container sx={{ mt: 4 }}>
-                {/* 选择比较指标 */}
+                {/* 指标选择 */}
                 <Box sx={{ mb: 3, display: 'flex' }}>
                     <FormControl variant="outlined" sx={{ minWidth: 240 }}>
                         <InputLabel>选择比较指标</InputLabel>
@@ -158,15 +174,40 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                 </Box>
 
                 {/* 柱状图 */}
-                <Box sx={{
-                    width: "100%",
-                    height: 400,
-                    backgroundColor: "#fafafa",
-                    borderRadius: 3,
-                    boxShadow: 5,
-                    p: 3,
-                    mb: 4
-                }}>
+                <Box
+                    sx={{
+                        position: "relative",
+                        width: "100%",
+                        height: 400,
+                        backgroundColor: "#fafafa",
+                        borderRadius: 3,
+                        boxShadow: 5,
+                        p: 3,
+                        mb: 4,
+                    }}
+                >
+                    <Box
+                        sx={{
+                            position: "absolute",
+                            top: 16,
+                            right: 16,
+                            backgroundColor: "rgba(0, 0, 0, 0.65)",
+                            color: "#fff",
+                            borderRadius: 2,
+                            p: 2,
+                            zIndex: 1,
+                            boxShadow: 3,
+                            fontSize: "0.875rem",
+                        }}
+                    >
+                        <Box sx={{ fontWeight: "bold", mb: 1 }}>汇总统计</Box>
+                        <Box>总销售额: ${summary.revenue.toFixed(2)}</Box>
+                        <Box>总广告支出: ${summary.expenditure.toFixed(2)}</Box>
+                        <Box>订单数量: {summary.order_count}</Box>
+                        <Box>广告新建数量: {summary.ad_creation_count}</Box>
+                        <Box>平均 ROI: {averageROI.toFixed(2)}</Box>
+                    </Box>
+
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={aggregatedData}>
                             <CartesianGrid strokeDasharray="3 3" />
@@ -174,7 +215,12 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey={selectedMetric} fill={blue[400]} barSize={40} radius={[8, 8, 0, 0]} />
+                            <Bar
+                                dataKey={selectedMetric}
+                                fill={blue[400]}
+                                barSize={40}
+                                radius={[8, 8, 0, 0]}
+                            />
                         </BarChart>
                     </ResponsiveContainer>
                 </Box>
@@ -183,10 +229,27 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                 <DataTable data={data} />
             </Container>
         );
+    } else {
+        // 当选中具体员工时，根据 selectedUser 过滤数据
+        const filteredData = data.filter(item => item.user_id === selectedUser);
+        if (filteredData.length === 0) {
+            return (
+                <Container>
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                        暂无数据
+                    </Alert>
+                </Container>
+            );
+        }
+        return (
+            <Container sx={{ mt: 4 }}>
+                <DataTable data={filteredData} />
+            </Container>
+        );
     }
 };
 
-// 🏆 数据表格（包括头像）
+// 🏆 数据表格组件
 interface DataTableProps {
     data: EmployeeRevenue[];
 }
@@ -197,7 +260,7 @@ const DataTable: React.FC<DataTableProps> = ({ data }) => {
             <Table>
                 <TableHead>
                     <TableRow>
-                        <TableCell>ID</TableCell>
+                        {/*<TableCell>ID</TableCell>*/}
                         <TableCell>头像</TableCell>
                         <TableCell>昵称</TableCell>
                         <TableCell>销售额</TableCell>
@@ -205,12 +268,13 @@ const DataTable: React.FC<DataTableProps> = ({ data }) => {
                         <TableCell>订单数量</TableCell>
                         <TableCell>广告新建数量</TableCell>
                         <TableCell>ROI</TableCell>
+                        <TableCell>时间</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((item) => (
                         <TableRow key={item.id} hover>
-                            <TableCell>{item.id}</TableCell>
+                            {/*<TableCell>{item.id}</TableCell>*/}
                             <TableCell>
                                 <MuiTooltip title={item.nickname}>
                                     <Avatar
@@ -226,6 +290,11 @@ const DataTable: React.FC<DataTableProps> = ({ data }) => {
                             <TableCell>{item.order_count}</TableCell>
                             <TableCell>{item.ad_creation_count}</TableCell>
                             <TableCell>{item.roi?.toFixed(2)}</TableCell>
+                            <TableCell>
+                                {item.record_time
+                                    ? new Date(item.record_time).toISOString().split('T')[0]
+                                    : ''}
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

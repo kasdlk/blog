@@ -1,3 +1,4 @@
+// src/pages/BlogDetail.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MDEditor from "@uiw/react-md-editor";
@@ -11,12 +12,15 @@ import {
     CircularProgress,
     Alert,
 } from "@mui/material";
+import Comments from "./Comments"; // 引入评论列表组件
+import CommentForm from "./CommentForm"; // 引入评论表单组件
 
 interface Blog {
     id: number;
     title: string;
     content: string;
-    // 如果还有其他字段，可以继续添加
+    author_id: number;
+    // 可继续添加其他字段
 }
 
 const BlogDetail: React.FC = () => {
@@ -25,6 +29,7 @@ const BlogDetail: React.FC = () => {
     const [blog, setBlog] = useState<Blog | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [commentsUpdate, setCommentsUpdate] = useState<number>(0);
 
     useEffect(() => {
         if (id) {
@@ -49,6 +54,10 @@ const BlogDetail: React.FC = () => {
 
     const handleBack = () => {
         navigate(-1);
+    };
+
+    const handleCommentCreated = () => {
+        setCommentsUpdate((prev) => prev + 1);
     };
 
     if (loading) {
@@ -104,6 +113,10 @@ const BlogDetail: React.FC = () => {
                     <MDEditor.Markdown source={blog.content} style={{ whiteSpace: "pre-wrap" }} />
                 </Box>
             </Paper>
+            {/* 评论表单 */}
+            <CommentForm blogId={blog.id} onCommentCreated={handleCommentCreated} />
+            {/* 传入博客作者ID 用于权限判断 */}
+            <Comments blogId={blog.id} blogAuthorId={blog.author_id} update={commentsUpdate} />
         </Container>
     );
 };
