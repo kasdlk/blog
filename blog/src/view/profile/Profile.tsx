@@ -11,6 +11,8 @@ import {
     Container,
     Stack,
     Divider,
+    Snackbar,
+    Alert,
 } from "@mui/material";
 import { getUserProfile, updateUser, UserProfile } from "../../api/user";
 
@@ -20,6 +22,10 @@ const UserProfileDisplay: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [formData, setFormData] = useState<Partial<UserProfile>>({});
+    // 用于 Snackbar 展示反馈信息
+    const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+    const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+    const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
     useEffect(() => {
         fetchProfile();
@@ -54,11 +60,23 @@ const UserProfileDisplay: React.FC = () => {
             await updateUser(formData);
             await fetchProfile();
             setIsEditing(false);
-            alert("修改成功！");
+            setSnackbarMessage("修改成功！");
+            setSnackbarSeverity("success");
+            setSnackbarOpen(true);
         } catch (err) {
             console.error("修改失败:", err);
-            alert("修改失败，请稍后再试");
+            setSnackbarMessage("修改失败，请稍后再试");
+            setSnackbarSeverity("error");
+            setSnackbarOpen(true);
         }
+    };
+
+    const handleSnackbarClose = (
+        _event?: React.SyntheticEvent | Event,
+        reason?: string
+    ) => {
+        if (reason === "clickaway") return;
+        setSnackbarOpen(false);
     };
 
     if (loading) {
@@ -216,6 +234,16 @@ const UserProfileDisplay: React.FC = () => {
                     )}
                 </CardActions>
             </Card>
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={3000}
+                onClose={handleSnackbarClose}
+                anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            >
+                <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Container>
     );
 };

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getBlogsPaginated, Blog } from "../../api/blog";
 
-// ===== MUI =====
 import {
     Container,
     Typography,

@@ -349,7 +349,7 @@ const DataEntryForm: React.FC = () => {
 
                         <TextField
                             type="number"
-                            label="广告新建数量"
+                            label="上新品数量"
                             name="ad_creation_count"
                             value={formData.ad_creation_count !== undefined ? formData.ad_creation_count : ""}
                             onChange={(e) => {
@@ -360,10 +360,10 @@ const DataEntryForm: React.FC = () => {
                                 }));
                             }}
                             size="small"
-                            placeholder="请输入广告新建数量"
+                            placeholder="请输入上新品数量"
                             inputProps={{
                                 inputMode: "numeric",
-                                step: "1", // 只允许整数
+                                step: "1",
                             }}
                         />
 

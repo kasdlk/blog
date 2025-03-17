@@ -22,7 +22,7 @@ type EmployeeRevenue struct {
 	Expenditure float64 `gorm:"not null;default:0" json:"expenditure"`
 	// 销售订单数量
 	OrderCount int `gorm:"not null;default:0" json:"order_count"`
-	// 广告新建数量（表示每天新建了多少个广告）
+	// 上新品数量（表示每天上了多少个新品）
 	AdCreationCount int `gorm:"not null;default:0" json:"ad_creation_count"`
 	// 销售额（单位：美元）
 	Revenue float64 `gorm:"not null;default:0" json:"revenue"`

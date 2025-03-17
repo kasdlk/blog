@@ -1,11 +1,11 @@
 import api from "./api";
 
-// 1) 定义接口：record_time 就是字符串
+// 1) 定义详细收益记录接口：record_time 为字符串
 export interface EmployeeRevenue {
     id: number;
     user_id?: number;
     nickname?: string;   // 后端生成
-    avatar?: string;   // 后端生成
+    avatar?: string;     // 后端生成
     ad_platform: string;
     product_categories: string;
     ad_type: string;
@@ -19,35 +19,42 @@ export interface EmployeeRevenue {
     remark?: string;
 }
 
-// 2) 在你希望“传输专用”的类型里，也让 record_time 是可选字符串
+// 2) 新增聚合数据接口（聚合后每个员工一条记录）
+export interface AggregatedEmployeeRevenue {
+    user_id: number;
+    nickname: string;
+    avatar: string;
+    total_revenue: number;
+    total_expenditure: number;
+    total_order_count: number;
+    total_ad_creation_count: number;
+    average_roi: number;
+}
+
+// 3) 传输专用的类型
 export type ApiEmployeeRevenue = Omit<EmployeeRevenue, "record_time"> & {
     record_time?: string;
 };
 
-// 3) 创建/更新 DTO 同理
+// 4) 创建/更新 DTO 同理
 export type SaveEmployeeRevenueDto = Omit<ApiEmployeeRevenue, "id" | "nickname" | "roi">;
 export type UpdateEmployeeRevenueDto = Partial<SaveEmployeeRevenueDto>;
 
-// ----- 核心：去掉所有 new Date() / toISOString() 转换函数 -----
-// 我们不需要 convertFromApiFormat 或 formatRecordTime 了，如果只想保持字符串
-// 当然，如果你想保留一些功能，也可以做最小改动——看后文示例
-
-// 4) 创建员工收益
+// 5) 创建员工收益
 export const createEmployeeRevenue = async (
     data: SaveEmployeeRevenueDto
 ): Promise<EmployeeRevenue> => {
-    // 后端返回的 record_time 也会是 string
     const response = await api.post<ApiEmployeeRevenue>("/employee-revenue", data);
-    return response.data;  // 直接返回
+    return response.data;
 };
 
-// 5) 获取单条记录
+// 6) 获取单条记录
 export const getEmployeeRevenue = async (id: number): Promise<EmployeeRevenue> => {
     const response = await api.get<ApiEmployeeRevenue>(`/employee-revenue/${id}`);
-    return response.data; // 直接返回
+    return response.data;
 };
 
-// 6) 更新
+// 7) 更新
 export const updateEmployeeRevenue = async (
     id: number,
     data: UpdateEmployeeRevenueDto
@@ -56,7 +63,7 @@ export const updateEmployeeRevenue = async (
     return response.data;
 };
 
-// 7) 删除
+// 8) 删除
 export const deleteEmployeeRevenue = async (id: number): Promise<boolean> => {
     try {
         await api.delete(`/employee-revenue/${id}`);
@@ -67,22 +74,19 @@ export const deleteEmployeeRevenue = async (id: number): Promise<boolean> => {
     }
 };
 
-// 8) 分页查询（支持筛选）
-// 如果后端返回 record_time 一定是字符串，就直接返回即可
-export const listEmployeeRevenue = async (
+// 9) 分页查询（详细记录，非聚合数据），支持筛选
+export const listEmployeeRevenuePaginated = async (
     page = 1,
     limit = 10,
-    startDate?: Date | undefined,
-    endDate?: Date | undefined,
-    userId?: number | undefined
+    startDate?: Date,
+    endDate?: Date,
+    userId?: number
 ): Promise<{ data: EmployeeRevenue[]; total: number; totalPages: number }> => {
-    // 将 Date 转换为字符串（ISO 格式）
     const params: Record<string, string | number | undefined> = {
         page,
         limit,
         startDate: startDate ? startDate.toISOString().split("T")[0] : undefined,
         endDate: endDate ? endDate.toISOString().split("T")[0] : undefined,
-
         userId,
     };
 
@@ -99,8 +103,24 @@ export const listEmployeeRevenue = async (
     };
 };
 
+// 10) 获取聚合的用户收益列表（聚合数据）
+// 当传入 userId 参数时，返回单个员工的聚合数据（数组中只有一条记录）；否则返回所有员工的聚合数据
+export const listAggregatedEmployeeRevenue = async (
+    startDate?: Date,
+    endDate?: Date,
+    userId?: number
+): Promise<AggregatedEmployeeRevenue[] | null> => {
+    const params: Record<string, string | number | undefined> = {
+        startDate: startDate ? startDate.toISOString().split("T")[0] : undefined,
+        endDate: endDate ? endDate.toISOString().split("T")[0] : undefined,
+        userId,
+    };
 
-// 9) 获取用户收益列表
+    const response = await api.get<{ data: AggregatedEmployeeRevenue[] | null }>("/employee-revenue", { params });
+    return response.data.data;
+};
+
+// 11) 获取用户收益列表（非聚合数据，如果需要分页查询用户的详细收益记录）
 export const getUserListEmployeeRevenue = async (
     page = 1,
     limit = 10,

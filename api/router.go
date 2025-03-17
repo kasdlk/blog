@@ -51,8 +51,8 @@ func SetupRouter() *gin.Engine {
 		// 获取当前用户的所有博客分页
 		blogRoutes.GET("/user", utils.AuthMiddleware(utils.RoleUser), blogController.GetCurrentUserBlogs)
 		// 获取当前用户的所有博客的目录
-		blogRoutes.GET("/directory", utils.AuthMiddleware(utils.RoleAdmin), blogController.GetBlogDirectory)
-		blogRoutes.GET("/my", utils.AuthMiddleware(utils.RoleAdmin), blogController.GetMyBlogInfo)
+		blogRoutes.GET("/directory", utils.AuthMiddleware(utils.RoleMarketer), blogController.GetBlogDirectory)
+		blogRoutes.GET("/my", utils.AuthMiddleware(utils.RoleMarketer), blogController.GetMyBlogInfo)
 
 	}
 

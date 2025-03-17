@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { listEmployeeRevenue, EmployeeRevenue } from "../../api/employeeRevenue";
+import { listAggregatedEmployeeRevenue, AggregatedEmployeeRevenue } from "../../api/employeeRevenue";
 import { getAllUsers, UserProfile } from "../../api/user";
 import DateEmployeeFilter from './DateEmployeeFilter';
 import DataDisplay from './DataDisplay';
 import { debounce } from "lodash";
 
 const Dashboard = () => {
-    const [revenueList, setRevenueList] = useState<EmployeeRevenue[]>([]);
+    // 使用聚合数据的类型
+    const [revenueList, setRevenueList] = useState<AggregatedEmployeeRevenue[]>([]);
     const [employeeList, setEmployeeList] = useState<UserProfile[]>([]);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
@@ -21,20 +22,19 @@ const Dashboard = () => {
             .catch((err) => console.error("获取员工列表失败:", err));
     }, []);
 
-    // 加载收益数据
+    // 加载聚合收益数据
     const fetchData = useCallback(
         debounce(async (start?: Date, end?: Date, user?: number | null) => {
             try {
                 setLoading(true);
                 setError("");
-                const { data } = await listEmployeeRevenue(
-                    1,
-                    100,
+                const data = await listAggregatedEmployeeRevenue(
                     start ?? undefined,
                     end ?? undefined,
                     user !== null ? user : undefined
                 );
-                setRevenueList(data);
+                // 若返回 null 则设置为 []
+                setRevenueList(data || []);
             } catch (err) {
                 console.error("获取收益数据失败:", err);
                 setError("无法加载数据，请稍后再试！");
@@ -45,19 +45,18 @@ const Dashboard = () => {
         []
     );
 
-
-    // 当 startDate / endDate / selectedUser 改变时，发起请求
+    // 当 startDate / endDate / selectedUser 改变时发起请求
     useEffect(() => {
         fetchData(startDate ?? undefined, endDate ?? undefined, selectedUser ?? undefined);
-
     }, [fetchData, startDate, endDate, selectedUser]);
 
-    // 回调给子组件
+    // 回调函数：日期选择
     const handleDateChange = (start: string | null, end: string | null) => {
         setStartDate(start ? new Date(start) : null);
         setEndDate(end ? new Date(end) : null);
     };
 
+    // 回调函数：员工选择
     const handleEmployeeChange = (employeeId: number | null) => {
         setSelectedUser(employeeId);
     };
@@ -68,9 +67,9 @@ const Dashboard = () => {
             <DateEmployeeFilter
                 onDateChange={handleDateChange}
                 onEmployeeChange={handleEmployeeChange}
-                employeeList={employeeList.map(u => ({id: u.id, nickname: u.nickname}))}
+                employeeList={employeeList.map(u => ({ id: u.id, nickname: u.nickname }))}
             />
-            <DataDisplay data={revenueList} loading={loading} error={error} selectedUser={selectedUser}/>
+            <DataDisplay data={revenueList} loading={loading} error={error} selectedUser={selectedUser} />
         </div>
     );
 };

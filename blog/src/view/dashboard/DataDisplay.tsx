@@ -9,7 +9,6 @@ import {
     Legend,
     ResponsiveContainer,
 } from "recharts";
-import { EmployeeRevenue } from "../../api/employeeRevenue";
 import {
     Container,
     Box,
@@ -20,9 +19,9 @@ import {
     Table,
     TableContainer,
     TableHead,
-    TableBody,
     TableRow,
     TableCell,
+    TableBody,
     Paper,
     CircularProgress,
     Avatar,
@@ -31,23 +30,24 @@ import {
 } from "@mui/material";
 import { blue, grey } from '@mui/material/colors';
 
-interface DataDisplayProps {
-    selectedUser?: number | null;
-    data: EmployeeRevenue[];
-    loading: boolean;
-    error: string | null;
-}
-
-interface AggregatedData {
+// 定义聚合数据接口，与后端返回数据结构一致
+export interface AggregatedEmployeeRevenue {
     user_id: number;
     nickname: string;
     avatar: string;
-    revenue: number;
-    expenditure: number;
-    order_count: number;
-    ad_creation_count: number;
-    roi: number;
-    count: number;
+    total_revenue: number;
+    total_expenditure: number;
+    total_order_count: number;
+    total_ad_creation_count: number;
+    average_roi: number;
+}
+
+interface DataDisplayProps {
+    selectedUser?: number | null;
+    // 现在 data 直接为聚合后的数据
+    data: AggregatedEmployeeRevenue[];
+    loading: boolean;
+    error: string | null;
 }
 
 const DataDisplay: React.FC<DataDisplayProps> = ({
@@ -56,14 +56,15 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                                                      loading,
                                                      error,
                                                  }) => {
-    const [selectedMetric, setSelectedMetric] = useState<string>("revenue");
+    // 初始指标选择默认展示销售额（聚合数据字段为 total_revenue）
+    const [selectedMetric, setSelectedMetric] = useState<string>("total_revenue");
 
     const metricsOptions = [
-        { key: "revenue", label: "销售额" },
-        { key: "expenditure", label: "广告支出" },
-        { key: "order_count", label: "订单数量" },
-        { key: "ad_creation_count", label: "广告新建数量" },
-        { key: "roi", label: "ROI" },
+        { key: "total_revenue", label: "销售额" },
+        { key: "total_expenditure", label: "广告支出" },
+        { key: "total_order_count", label: "订单数量" },
+        { key: "total_ad_creation_count", label: "上新品数量" },
+        { key: "average_roi", label: "ROI" },
     ];
 
     if (loading) {
@@ -96,63 +97,32 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
         );
     }
 
-    // 当未选中具体员工时，展示聚合视图
+    // 若未选中具体员工，直接使用后端返回的聚合数据
     if (selectedUser === null) {
-        const aggregatedDataMap = data
-            .filter((item) => item.user_id !== undefined)
-            .reduce((acc, item) => {
-                const key = item.user_id as number;
-                if (!acc[key]) {
-                    acc[key] = {
-                        user_id: item.user_id!,
-                        nickname: item.nickname || "-",
-                        avatar: item.avatar || "",
-                        revenue: 0,
-                        expenditure: 0,
-                        order_count: 0,
-                        ad_creation_count: 0,
-                        roi: 0,
-                        count: 0,
-                    };
-                }
-                acc[key].revenue += item.revenue;
-                acc[key].expenditure += item.expenditure;
-                acc[key].order_count += item.order_count;
-                acc[key].ad_creation_count += item.ad_creation_count;
-                acc[key].roi += item.roi || 0;
-                acc[key].count += 1;
-                return acc;
-            }, {} as Record<number, AggregatedData>);
+        const aggregatedData = data;
 
-        const aggregatedData = Object.values(aggregatedDataMap).map(
-            (group: AggregatedData) => ({
-                user_id: group.user_id,
-                nickname: group.nickname,
-                avatar: group.avatar,
-                revenue: group.revenue / group.count,
-                expenditure: group.expenditure / group.count,
-                order_count: group.order_count / group.count,
-                ad_creation_count: group.ad_creation_count / group.count,
-                roi: group.roi / group.count,
-            })
-        );
-
-        // 计算总统计数据
+        // 计算总统计数据（前端可自行统计总额）
         const summary = aggregatedData.reduce(
             (acc, item) => ({
-                revenue: acc.revenue + item.revenue,
-                expenditure: acc.expenditure + item.expenditure,
-                order_count: acc.order_count + item.order_count,
-                ad_creation_count: acc.ad_creation_count + item.ad_creation_count,
+                revenue: acc.revenue + item.total_revenue,
+                expenditure: acc.expenditure + item.total_expenditure,
+                order_count: acc.order_count + item.total_order_count,
+                ad_creation_count: acc.ad_creation_count + item.total_ad_creation_count,
             }),
             { revenue: 0, expenditure: 0, order_count: 0, ad_creation_count: 0 }
         );
 
         const averageROI =
             aggregatedData.length > 0
-                ? aggregatedData.reduce((sum, item) => sum + item.roi, 0) /
+                ? aggregatedData.reduce((sum, item) => sum + item.average_roi, 0) /
                 aggregatedData.length
                 : 0;
+
+        // 构造图表数据：横轴为员工昵称，纵轴为选择指标的值
+        const chartData = aggregatedData.map(item => ({
+            name: item.nickname,
+            value: item[selectedMetric as keyof AggregatedEmployeeRevenue],
+        }));
 
         return (
             <Container sx={{ mt: 4 }}>
@@ -173,7 +143,7 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                     </FormControl>
                 </Box>
 
-                {/* 柱状图 */}
+                {/* 汇总统计展示 */}
                 <Box
                     sx={{
                         position: "relative",
@@ -204,19 +174,19 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                         <Box>总销售额: ${summary.revenue.toFixed(2)}</Box>
                         <Box>总广告支出: ${summary.expenditure.toFixed(2)}</Box>
                         <Box>订单数量: {summary.order_count}</Box>
-                        <Box>广告新建数量: {summary.ad_creation_count}</Box>
+                        <Box>上新品数量: {summary.ad_creation_count}</Box>
                         <Box>平均 ROI: {averageROI.toFixed(2)}</Box>
                     </Box>
 
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={aggregatedData}>
+                        <BarChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="nickname" />
+                            <XAxis dataKey="name" />
                             <YAxis />
                             <Tooltip />
                             <Legend />
                             <Bar
-                                dataKey={selectedMetric}
+                                dataKey="value"
                                 fill={blue[400]}
                                 barSize={40}
                                 radius={[8, 8, 0, 0]}
@@ -226,7 +196,7 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
                 </Box>
 
                 {/* 数据表格 */}
-                <DataTable data={data} />
+                <DataTable data={aggregatedData} />
             </Container>
         );
     } else {
@@ -249,9 +219,9 @@ const DataDisplay: React.FC<DataDisplayProps> = ({
     }
 };
 
-// 🏆 数据表格组件
+// 🏆 数据表格组件：直接显示聚合数据，不再包含详细记录的 record_time 字段
 interface DataTableProps {
-    data: EmployeeRevenue[];
+    data: AggregatedEmployeeRevenue[];
 }
 
 const DataTable: React.FC<DataTableProps> = ({ data }) => {
@@ -260,21 +230,18 @@ const DataTable: React.FC<DataTableProps> = ({ data }) => {
             <Table>
                 <TableHead>
                     <TableRow>
-                        {/*<TableCell>ID</TableCell>*/}
                         <TableCell>头像</TableCell>
                         <TableCell>昵称</TableCell>
-                        <TableCell>销售额</TableCell>
-                        <TableCell>广告支出</TableCell>
-                        <TableCell>订单数量</TableCell>
-                        <TableCell>广告新建数量</TableCell>
-                        <TableCell>ROI</TableCell>
-                        <TableCell>时间</TableCell>
+                        <TableCell>总销售额</TableCell>
+                        <TableCell>总广告支出</TableCell>
+                        <TableCell>总订单数量</TableCell>
+                        <TableCell>总上新品数量</TableCell>
+                        <TableCell>平均ROI</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((item) => (
-                        <TableRow key={item.id} hover>
-                            {/*<TableCell>{item.id}</TableCell>*/}
+                        <TableRow key={item.user_id} hover>
                             <TableCell>
                                 <MuiTooltip title={item.nickname}>
                                     <Avatar
@@ -285,16 +252,11 @@ const DataTable: React.FC<DataTableProps> = ({ data }) => {
                                 </MuiTooltip>
                             </TableCell>
                             <TableCell>{item.nickname}</TableCell>
-                            <TableCell>${item.revenue.toFixed(2)}</TableCell>
-                            <TableCell>${item.expenditure.toFixed(2)}</TableCell>
-                            <TableCell>{item.order_count}</TableCell>
-                            <TableCell>{item.ad_creation_count}</TableCell>
-                            <TableCell>{item.roi?.toFixed(2)}</TableCell>
-                            <TableCell>
-                                {item.record_time
-                                    ? new Date(item.record_time).toISOString().split('T')[0]
-                                    : ''}
-                            </TableCell>
+                            <TableCell>${item.total_revenue.toFixed(2)}</TableCell>
+                            <TableCell>${item.total_expenditure.toFixed(2)}</TableCell>
+                            <TableCell>{item.total_order_count}</TableCell>
+                            <TableCell>{item.total_ad_creation_count}</TableCell>
+                            <TableCell>{item.average_roi.toFixed(2)}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

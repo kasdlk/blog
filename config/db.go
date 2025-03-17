@@ -58,6 +58,7 @@ func adminInit(db *gorm.DB) {
 		{"付孝勇", "fxy", utils.RoleMarketer},
 		{"赵靖", "zj", utils.RoleMarketer},
 		{"莫聪波", "mcb", utils.RoleMarketer},
+		{"许念", "xn", utils.RoleMarketer},
 	}
 
 	for _, u := range defaultUsers {

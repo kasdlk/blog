@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"blog/models"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -205,99 +205,6 @@ func (c *employeeRevenueController) DeleteEmployeeRevenue(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Record deleted successfully"})
 }
-func (c *employeeRevenueController) ListEmployeeRevenue(ctx *gin.Context) {
-	pageStr := ctx.DefaultQuery("page", "1")
-	limitStr := ctx.DefaultQuery("limit", "10")
-	startDateStr := ctx.Query("startDate")
-	endDateStr := ctx.Query("endDate")
-	userIDStr := ctx.Query("userId")
-
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		page = 1
-	}
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 {
-		limit = 10
-	}
-
-	offset := (page - 1) * limit
-
-	query := c.db.Model(&models.EmployeeRevenue{}).
-		Preload("User").
-		Debug() // ✅ 输出SQL到终端
-
-	// ✅ 按用户筛选
-	if userIDStr != "" {
-		employeeID, _ := strconv.Atoi(userIDStr)
-		query = query.Where("user_id = ?", employeeID)
-	}
-
-	// ✅ 按时间筛选
-	if startDateStr != "" && endDateStr != "" {
-		startDate, err := time.Parse("2006-01-02", startDateStr)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid startDate format"})
-			return
-		}
-		endDate, err := time.Parse("2006-01-02", endDateStr)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endDate format"})
-			return
-		}
-		// 将结束日期调整到当天最后一刻：加一天，再减去一纳秒
-		endDate = endDate.AddDate(0, 0, 1).Add(-time.Nanosecond)
-		query = query.Where("record_time BETWEEN ? AND ?", startDate, endDate)
-	}
-
-	// ✅ 输出完整的 SQL 语句
-	sql := query.ToSQL(func(tx *gorm.DB) *gorm.DB {
-		return tx.Order("record_time DESC").Limit(limit).Offset(offset)
-	})
-	fmt.Println("Generated SQL:", sql)
-
-	// ✅ 获取数据
-	var revenues []models.EmployeeRevenue
-	if err := query.Order("record_time DESC").Limit(limit).Offset(offset).Find(&revenues).Error; err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data"})
-		return
-	}
-
-	// ✅ 统计总数
-	var totalCount int64
-	query.Count(&totalCount)
-
-	// ✅ 返回数据中带上 nickname
-	response := make([]map[string]interface{}, 0)
-	for _, revenue := range revenues {
-		item := map[string]interface{}{
-			"id":                revenue.ID,
-			"user_id":           revenue.UserID,
-			"nickname":          revenue.User.Nickname,
-			"avatar":            revenue.User.Avatar,
-			"ad_platform":       revenue.AdPlatform,
-			"product_category":  revenue.ProductCategories,
-			"ad_type":           revenue.AdType,
-			"region":            revenue.Region,
-			"expenditure":       revenue.Expenditure,
-			"order_count":       revenue.OrderCount,
-			"ad_creation_count": revenue.AdCreationCount,
-			"revenue":           revenue.Revenue,
-			"roi":               revenue.ROI,
-			"record_time":       revenue.RecordTime,
-			"remark":            revenue.Remark,
-		}
-		response = append(response, item)
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"data":       response,
-		"total":      totalCount,
-		"page":       page,
-		"limit":      limit,
-		"totalPages": (totalCount + int64(limit) - 1) / int64(limit),
-	})
-}
 
 // ✅ GetUserEmployeeRevenueList 获取当前用户自己的收益记录（支持日期筛选 + 分页）
 func (c *employeeRevenueController) GetUserEmployeeRevenueList(ctx *gin.Context) {
@@ -306,7 +213,7 @@ func (c *employeeRevenueController) GetUserEmployeeRevenueList(ctx *gin.Context)
 	startDateStr := ctx.Query("startDate")
 	endDateStr := ctx.Query("endDate")
 
-	// ✅ 获取当前用户 ID
+	// 获取当前用户 ID
 	userIDRaw, exists := ctx.Get("userId")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -331,7 +238,7 @@ func (c *employeeRevenueController) GetUserEmployeeRevenueList(ctx *gin.Context)
 	query := c.db.Model(&models.EmployeeRevenue{}).
 		Where("user_id = ?", userID)
 
-	// ✅ 按时间筛选
+	// 按时间筛选
 	if startDateStr != "" && endDateStr != "" {
 		startDate, err := time.Parse("2006-01-02", startDateStr)
 		if err != nil {
@@ -346,16 +253,23 @@ func (c *employeeRevenueController) GetUserEmployeeRevenueList(ctx *gin.Context)
 		query = query.Where("record_time BETWEEN ? AND ?", startDate, endDate)
 	}
 
-	// ✅ 获取数据
+	// 获取数据
 	var revenues []models.EmployeeRevenue
 	if err := query.Order("record_time DESC").Limit(limit).Offset(offset).Find(&revenues).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data"})
 		return
 	}
 
-	// ✅ 统计总数
+	// 统计总数
 	var totalCount int64
 	query.Count(&totalCount)
+
+	// 对返回的数值字段进行四舍五入（保留两位小数）
+	for i := range revenues {
+		revenues[i].Revenue = math.Round(revenues[i].Revenue*100) / 100
+		revenues[i].Expenditure = math.Round(revenues[i].Expenditure*100) / 100
+		revenues[i].ROI = math.Round(revenues[i].ROI*100) / 100
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data":       revenues,
@@ -365,6 +279,7 @@ func (c *employeeRevenueController) GetUserEmployeeRevenueList(ctx *gin.Context)
 		"totalPages": (totalCount + int64(limit) - 1) / int64(limit),
 	})
 }
+
 func parseFlexibleTime(input string) (time.Time, error) {
 	var parsedTime time.Time
 	var err error
@@ -404,4 +319,86 @@ func parseFlexibleTime(input string) (time.Time, error) {
 	}
 
 	return parsedTime, err
+}
+func (c *employeeRevenueController) ListEmployeeRevenue(ctx *gin.Context) {
+	// 获取查询参数
+	startDateStr := ctx.Query("startDate")
+	endDateStr := ctx.Query("endDate")
+	userIDStr := ctx.Query("userId")
+
+	// 构造查询条件
+	query := c.db.Model(&models.EmployeeRevenue{})
+
+	// 按员工筛选（如果提供了 userId）
+	if userIDStr != "" {
+		if employeeID, err := strconv.Atoi(userIDStr); err == nil {
+			query = query.Where("employee_revenue.user_id = ?", employeeID)
+		}
+	}
+
+	// 按时间筛选（如果同时提供了 startDate 与 endDate）
+	if startDateStr != "" && endDateStr != "" {
+		startDate, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid startDate format"})
+			return
+		}
+		endDate, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endDate format"})
+			return
+		}
+		// 调整结束日期到当天最后一刻
+		endDate = endDate.AddDate(0, 0, 1).Add(-time.Nanosecond)
+		query = query.Where("employee_revenue.record_time BETWEEN ? AND ?", startDate, endDate)
+	}
+
+	// 定义聚合结果结构（每个员工一条记录）
+	type AggregatedResult struct {
+		UserID               int     `json:"user_id"`
+		Nickname             string  `json:"nickname"`
+		Avatar               string  `json:"avatar"`
+		TotalRevenue         float64 `json:"total_revenue"`
+		TotalExpenditure     float64 `json:"total_expenditure"`
+		TotalOrderCount      int64   `json:"total_order_count"`
+		TotalAdCreationCount int64   `json:"total_ad_creation_count"`
+		AverageROI           float64 `json:"average_roi"`
+	}
+
+	var results []AggregatedResult
+
+	// 使用聚合函数并按 user_id 分组，并通过左联接获取用户的 nickname 和 avatar
+	err := query.
+		Joins("left join users on users.id = employee_revenue.user_id").
+		Select(
+			"employee_revenue.user_id, " +
+				"users.nickname as nickname, " +
+				"users.avatar as avatar, " +
+				"SUM(employee_revenue.revenue) as total_revenue, " +
+				"SUM(employee_revenue.expenditure) as total_expenditure, " +
+				"SUM(employee_revenue.order_count) as total_order_count, " +
+				"SUM(employee_revenue.ad_creation_count) as total_ad_creation_count, " +
+				"CASE WHEN SUM(employee_revenue.expenditure) <> 0 THEN SUM(employee_revenue.revenue)/SUM(employee_revenue.expenditure) ELSE 0 END as average_roi",
+		).
+		Group("employee_revenue.user_id").
+		Scan(&results).Error
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch aggregated data"})
+		return
+	}
+
+	// 对返回的 float 数值保留两位小数
+	for i := range results {
+		results[i].TotalRevenue = math.Round(results[i].TotalRevenue*100) / 100
+		results[i].TotalExpenditure = math.Round(results[i].TotalExpenditure*100) / 100
+		results[i].AverageROI = math.Round(results[i].AverageROI*100) / 100
+	}
+
+	// 返回所有员工的聚合数据
+	// 当请求中传入 userId 参数时，返回数组中只包含该员工的一条记录，
+	// 否则返回所有员工的统计数据，由前端进行总数据的统计计算
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": results,
+	})
 }
