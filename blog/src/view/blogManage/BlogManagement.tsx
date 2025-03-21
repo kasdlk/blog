@@ -148,9 +148,9 @@ const BlogManagement: React.FC = () => {
                 </Alert>
             )}
 
-            <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                    博客列表
+            <Box sx={{ mt: 4, mx: "auto", maxWidth: 800, px: 2 }}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                    所有博客
                 </Typography>
 
                 {blogs.length === 0 && !loading ? (
@@ -158,35 +158,56 @@ const BlogManagement: React.FC = () => {
                         暂无数据
                     </Alert>
                 ) : (
-                    <List sx={{ width: "100%", bgcolor: "background.paper", borderRadius: 1 }}>
+                    <List sx={{ width: "100%", bgcolor: "background.paper", borderRadius: 2 }}>
                         {blogs.map((blog) => (
-                            <Card key={blog.id} sx={{ mb: 2, boxShadow: 2 }}>
-                                <CardContent
-                                    sx={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        height: "100%",
-                                    }}
-                                >
-                                    <Typography variant="h6" component="div">
+                            <Card
+                                key={blog.id}
+                                sx={{
+                                    mb: 3,
+                                    boxShadow: 3,
+                                    transition: "transform 0.2s",
+                                    "&:hover": { transform: "scale(1.02)" },
+                                }}
+                            >
+                                <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                    <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
                                         {blog.title}
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                        作者：{blog.nickname || "未知作者"}, 分类：{blog.category}, 标签：{blog.tags}
+                                    <Typography variant="body2" color="text.secondary">
+                                        作者：
+                                        <span style={{ fontWeight: "bold", color: "#1976d2" }}>
+                                        {blog.nickname || "未知作者"}
+                                        </span>
+                                        {" | "}
+                                        分类：{blog.category} | 标签：{blog.tags}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ mb: 1, color: "#555" }}>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            display: "-webkit-box",
+                                            WebkitBoxOrient: "vertical",
+                                            overflow: "hidden",
+                                            WebkitLineClamp: 1,
+                                        }}
+                                    >
                                         {removeMarkdown(blog.content).slice(0, 100)}...
                                     </Typography>
+
                                     <Box sx={{ flexGrow: 1 }} />
-                                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                            mt: 2,
+                                        }}
+                                    >
                                         <Typography variant="caption" color="text.secondary">
                                             创建：{new Date(blog.created_at).toLocaleString()}
                                             {blog.updated_at
                                                 ? `, 更新：${new Date(blog.updated_at).toLocaleString()}`
                                                 : ""}
                                         </Typography>
-                                    </Box>
-                                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
                                         <Button
                                             size="small"
                                             variant="outlined"
@@ -201,6 +222,7 @@ const BlogManagement: React.FC = () => {
                     </List>
                 )}
             </Box>
+
 
             {/* 分页控件始终显示 */}
             {!loading && (

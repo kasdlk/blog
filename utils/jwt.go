@@ -48,18 +48,18 @@ func (s *jwtTools) CheckPasswordHash(password, hash string) bool {
 // GenerateToken 生成JWT
 func (s *jwtTools) GenerateToken(user *models.Users) (string, error) {
 	now := time.Now()
-	expirationTime := now.Add(24 * time.Hour) // Token 有效期为24小时
+	//expirationTime := now.Add(2400 * time.Hour) // Token 有效期为24小时
 
 	claims := &MyClaims{
 		UserID: user.ID, // 将数据库中固定的用户ID存入自定义字段
 		Role:   user.Role,
 		StandardClaims: jwt.StandardClaims{
-			Issuer:    jwtIssuer,                  // 签发者
-			Subject:   strconv.Itoa(int(user.ID)), // Subject 使用用户ID的字符串形式
-			Audience:  jwtAudience,                // 受众
-			Id:        uuid.New().String(),        // Token 实例的唯一标识
-			ExpiresAt: expirationTime.Unix(),      // 到期时间
-			IssuedAt:  now.Unix(),                 // 签发时间
+			Issuer:   jwtIssuer,                  // 签发者
+			Subject:  strconv.Itoa(int(user.ID)), // Subject 使用用户ID的字符串形式
+			Audience: jwtAudience,                // 受众
+			Id:       uuid.New().String(),        // Token 实例的唯一标识
+			//ExpiresAt: expirationTime.Unix(),      // 到期时间
+			IssuedAt: now.Unix(), // 签发时间
 		},
 	}
 

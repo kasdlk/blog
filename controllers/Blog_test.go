@@ -20,7 +20,7 @@ func TestInsertBlogs(t *testing.T) {
 	}
 
 	// 迁移数据表
-	if err := config.DB.AutoMigrate(&models.User{}, &models.Blog{}); err != nil {
+	if err := config.DB.AutoMigrate(&models.Users{}, &models.Blog{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 	blogs := []models.Blog{

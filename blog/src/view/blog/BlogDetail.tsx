@@ -1,11 +1,9 @@
 // src/pages/BlogDetail.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import MDEditor from "@uiw/react-md-editor";
 import { getBlogDetail } from "../../api/blog";
 import {
     Container,
-    Paper,
     Box,
     Typography,
     Button,
@@ -13,7 +11,8 @@ import {
     Alert,
 } from "@mui/material";
 import Comments from "./Comments"; // 引入评论列表组件
-import CommentForm from "./CommentForm"; // 引入评论表单组件
+import CommentForm from "./CommentForm";
+import Markdown from "mui-markdown";
 
 interface Blog {
     id: number;
@@ -108,11 +107,37 @@ const BlogDetail: React.FC = () => {
             <Typography variant="h4" gutterBottom>
                 {blog.title}
             </Typography>
-            <Paper sx={{ p: 2 }}>
-                <Box sx={{ mt: 2 }}>
-                    <MDEditor.Markdown source={blog.content} style={{ whiteSpace: "pre-wrap" }} />
-                </Box>
-            </Paper>
+            <Box
+                sx={{
+                    flex: 1,
+                    borderRadius: 2,
+                    overflow: "auto",
+                    padding: 2,
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    backdropFilter: "blur(10px)",
+                    boxShadow: "0 4px 30px rgba(0, 0, 0, 0.1)",
+                }}
+            >
+                <Markdown
+                    options={{
+                        overrides: {
+                            h1: {
+                                component: "h1",
+                                props: {
+                                    style: {
+                                        fontSize: "22px",
+                                        color: "#333",
+                                        marginBottom: "8px",
+                                    },
+                                },
+                            },
+                        },
+                    }}
+                >
+                    {blog.content}
+                </Markdown>
+            </Box>
             {/* 评论表单 */}
             <CommentForm blogId={blog.id} onCommentCreated={handleCommentCreated} />
             {/* 传入博客作者ID 用于权限判断 */}

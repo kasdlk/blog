@@ -18,10 +18,16 @@ import {
     Paper,
     Card,
     CardContent,
-    Pagination,
+    Pagination, List,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import removeMarkdown from "remove-markdown";
+// ===== MUI Date Pickers (v6+) =====
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { Dayjs } from "dayjs";
 
 const Blogs: React.FC = () => {
     const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -33,7 +39,7 @@ const Blogs: React.FC = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
-    // Snackbar
+    // Snackbar 提示
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState<AlertColor>("success");
@@ -42,12 +48,23 @@ const Blogs: React.FC = () => {
 
     // 分页状态（当前页码）
     const [page, setPage] = useState(1);
+    // 按日期查询的日期状态（使用 Dayjs 记录）
+    const [filterDate, setFilterDate] = useState<Dayjs | null>(null);
 
-    // 获取博客数据，支持分页
-    const fetchBlogs = async (pageNumber = page) => {
+    // 获取博客数据，支持分页及日期查询
+    const fetchBlogs = async (pageNumber = page, date?: Dayjs | null) => {
         setLoading(true);
         try {
-            const result = await getBlogsUser(pageNumber);
+            let dateStr: string | undefined;
+            if (date) {
+                // 将 Dayjs 转为 JS Date，再转为 "YYYY-MM-DD" 格式（处理时区偏差）
+                const jsDate = date.toDate();
+                dateStr = new Date(jsDate.getTime() - jsDate.getTimezoneOffset() * 60000)
+                    .toISOString()
+                    .slice(0, 10);
+            }
+            // 假设 getBlogsUser 接口支持第二个参数传入日期过滤
+            const result = await getBlogsUser(pageNumber, dateStr);
             setBlogs(result.data || []);
             setTotalPages(result.totalPages);
             setError(null);
@@ -59,18 +76,31 @@ const Blogs: React.FC = () => {
         }
     };
 
+    // 每当页码或日期变化时重新查询
     useEffect(() => {
-        fetchBlogs();
+        fetchBlogs(page, filterDate);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page]);
+    }, [page, filterDate]);
 
-    // 点击删除
+    // 点击查询按钮：重置页码并查询
+    const handleQueryByDate = () => {
+        setPage(1);
+        fetchBlogs(1, filterDate);
+    };
+
+    // 重置日期筛选
+    const handleResetDateFilter = () => {
+        setFilterDate(null);
+        setPage(1);
+        fetchBlogs(1, null);
+    };
+
+    // 删除相关操作
     const handleDeleteClick = (id: number) => {
         setDeleteDialogOpen(true);
         setDeleteTargetId(id);
     };
 
-    // 确认删除
     const handleConfirmDelete = async () => {
         if (!deleteTargetId) return;
         setDeleteDialogOpen(false);
@@ -90,23 +120,21 @@ const Blogs: React.FC = () => {
         }
     };
 
-    // 取消删除
     const handleCancelDelete = () => {
         setDeleteDialogOpen(false);
         setDeleteTargetId(null);
     };
 
-    // 编辑博客
+    // 编辑、新建博客
     const handleEdit = (id: number) => {
         navigate(`/blog/form/${id}`);
     };
 
-    // 新建博客
     const handleCreate = () => {
         navigate("/blog/form");
     };
 
-    // 展示提示
+    // Snackbar 提示相关
     const showSnackbar = (message: string, severity: AlertColor) => {
         setSnackbarMessage(message);
         setSnackbarSeverity(severity);
@@ -139,6 +167,33 @@ const Blogs: React.FC = () => {
                 </Box>
             </Box>
 
+            {/* 日期筛选区域 */}
+            <Paper variant="outlined" sx={{ mb: 2, p: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography variant="body1">按日期查询:</Typography>
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                        <DatePicker
+                            label="选择日期"
+                            value={filterDate}
+                            onChange={(newValue) => setFilterDate(newValue)}
+                            format="YYYY-MM-DD"
+                            slotProps={{
+                                textField: {
+                                    size: "small",
+                                    sx: { minWidth: 150 },
+                                },
+                            }}
+                        />
+                    </LocalizationProvider>
+                    <Button variant="contained" onClick={handleQueryByDate}>
+                        查询
+                    </Button>
+                    <Button variant="outlined" onClick={handleResetDateFilter}>
+                        重置
+                    </Button>
+                </Box>
+            </Paper>
+
             {/* 加载中 */}
             {loading && (
                 <Box sx={{ textAlign: "center", my: 4 }}>
@@ -161,11 +216,17 @@ const Blogs: React.FC = () => {
             ) : (
                 !loading &&
                 blogs.length > 0 && (
-                    <Paper variant="outlined" sx={{ p: 2 }}>
+                    <List>
                         {blogs.map((blog) => (
                             <Card
                                 key={blog.id}
-                                sx={{ mb: 2, position: "relative", cursor: "pointer" }}
+                                sx={{ mb: 2,
+                                    position: "relative",
+                                    cursor: "pointer",
+                                    transition: "transform 0.2s",
+                                    "&:hover": { transform: "scale(1.02)" },
+
+                            }}
                                 onClick={() => navigate(`/blog/${blog.id}`)}
                             >
                                 <CardContent>
@@ -173,13 +234,11 @@ const Blogs: React.FC = () => {
                                         {blog.title}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary">
-                                        作者：{blog.nickname || "未知作者"}, 分类：{blog.category}, 标签：
+                                        作者：{blog.nickname || "未知作者"}，分类：{blog.category}，标签：
                                         {blog.tags}
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                        {blog.content.length > 100
-                                            ? blog.content.slice(0, 100) + "..."
-                                            : blog.content}
+                                    <Typography variant="body2" sx={{ mb: 1, color: "#555" }}>
+                                        {removeMarkdown(blog.content).slice(0, 100)}...
                                     </Typography>
 
                                     {/* 时间显示放在左下角 */}
@@ -187,7 +246,7 @@ const Blogs: React.FC = () => {
                                         <Typography variant="caption" color="text.secondary">
                                             创建：{new Date(blog.created_at).toLocaleString()}
                                             {blog.updated_at
-                                                ? `, 更新：${new Date(blog.updated_at).toLocaleString()}`
+                                                ? `，更新：${new Date(blog.updated_at).toLocaleString()}`
                                                 : ""}
                                         </Typography>
                                     </Box>
@@ -224,7 +283,7 @@ const Blogs: React.FC = () => {
                                 </CardContent>
                             </Card>
                         ))}
-                    </Paper>
+                    </List>
                 )
             )}
 

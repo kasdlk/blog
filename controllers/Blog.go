@@ -256,6 +256,7 @@ func (c *blogController) DeleteBlog(ctx *gin.Context) {
 }
 
 func (c *blogController) GetCurrentUserBlogs(ctx *gin.Context) {
+	// 获取页码参数
 	pageStr := ctx.DefaultQuery("page", "1")
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -264,6 +265,10 @@ func (c *blogController) GetCurrentUserBlogs(ctx *gin.Context) {
 	limit := 6
 	offset := (page - 1) * limit
 
+	// 获取日期筛选参数，格式应为 "YYYY-MM-DD"
+	date := ctx.Query("date")
+
+	// 获取当前用户ID
 	userIDRaw, exists := ctx.Get("userId")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -275,48 +280,61 @@ func (c *blogController) GetCurrentUserBlogs(ctx *gin.Context) {
 		return
 	}
 
-	// 统计符合条件的博客数量
-	var total int64
+	// 构造计数查询：根据当前用户和（可选）日期进行筛选
 	countQuery := c.db.Model(&models.Blog{}).Where("user_id = ?", userID)
+	if date != "" {
+		if startDate, err := time.Parse("2006-01-02", date); err == nil {
+			endDate := startDate.AddDate(0, 0, 1).Add(-time.Nanosecond)
+			countQuery = countQuery.Where("created_at BETWEEN ? AND ?", startDate, endDate)
+		}
+	}
+
+	var total int64
 	if err := countQuery.Count(&total).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count blogs"})
 		return
 	}
 
-	// 查询博客数据并关联 users 表获取 nickname
-	var blogs []BlogWithAuthor
-	query := c.db.Table("blog").
+	// 构造数据查询：关联 users 表获取昵称，并根据条件查询当前用户的博客
+	dataQuery := c.db.Table("blog").
 		Select(`
-            blog.id,
-            blog.title,
-            blog.content,
-            blog.user_id AS author_id,
-            blog.category,
-            blog.tags,
-            blog.status,
-            blog.created_at,
-            blog.updated_at,
-            users.nickname as nickname
-        `).
+			blog.id,
+			blog.title,
+			blog.content,
+			blog.user_id AS author_id,
+			blog.category,
+			blog.tags,
+			blog.status,
+			blog.created_at,
+			blog.updated_at,
+			users.nickname as nickname
+		`).
 		Joins("LEFT JOIN users ON users.id = blog.user_id").
-		Where("blog.user_id = ?", userID).
-		Order("blog.created_at DESC").
+		Where("blog.user_id = ?", userID)
+	if date != "" {
+		if startDate, err := time.Parse("2006-01-02", date); err == nil {
+			endDate := startDate.AddDate(0, 0, 1).Add(-time.Nanosecond)
+			dataQuery = dataQuery.Where("blog.created_at BETWEEN ? AND ?", startDate, endDate)
+		}
+	}
+
+	dataQuery = dataQuery.Order("blog.created_at DESC").
 		Limit(limit).
 		Offset(offset)
 
-	if err := query.Scan(&blogs).Error; err != nil {
+	var blogs []BlogWithAuthor
+	if err := dataQuery.Scan(&blogs).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user's blogs"})
 		return
 	}
 
-	// 计算总页数
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
-
 	ctx.JSON(http.StatusOK, gin.H{
 		"data":       blogs,
 		"totalPages": totalPages,
 	})
 }
+
 func (c *blogController) GetMyBlogInfo(ctx *gin.Context) {
 	// 获取分页参数
 	pageStr := ctx.DefaultQuery("page", "1")

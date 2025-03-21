@@ -46,7 +46,7 @@ const Sidebar = () => {
         { key: "data-entry", label: "数据记录", visible: true, icon: <HamsterSvg /> },
         { key: "blog", label: "博客创建", visible: true, icon: <PsyduckSvg /> },
         { key: "user", label: "用户管理", visible: role !== null && role <= 1, icon: <HuskySvg /> },
-        { key: "user-blog", label: "用户博客", visible: true, icon: <RagdollCatSvg /> },
+        { key: "user-blog", label: "用户博客", visible: role !== null && role <= 2, icon: <RagdollCatSvg /> },
     ];
 
     // 次要功能区菜单
