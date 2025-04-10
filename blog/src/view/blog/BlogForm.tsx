@@ -29,10 +29,37 @@ const BlogForm: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const [createdAt, setCreatedAt] = useState<string>("");
+    const formatDatetimeLocal = (date: Date) => {
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
 
     const availableCategories = ["默认分类", "营销", "数据分析", "策略", "优化"];
     const TEMPLATES: Record<string, string> = {
-        "广告模板": `### 1️⃣ 今日数据表现
+        "广告模板": `## 🗓️ 结构化日报
+        
+## 🌅 今日总结
+### 1️⃣ 今天工作的结果（先说事实）
+- 任务 1：
+- 任务 2：
+- 任务 3：  
+
+### 2️⃣ 我的感受（再说感受）
+- 感受：  
+- 遇到的阻碍：  
+
+### 3️⃣ 自我复盘（做得好 + 可以提升的）
+- 好的：
+- 有待提升：
+
+### 4️⃣ 明天计划与调整
+- 计划 1：
+- 调整 2：
+
+`,
+
+        "结构化日报模板": `### 1️⃣ 今日数据表现
 - 📊 曝光量：  
 - 👀 点击率（CTR）：  
 - 💰 成交率（CVR）：  
@@ -172,8 +199,12 @@ const BlogForm: React.FC = () => {
     useEffect(() => {
         if (!id) {
             setContent(TEMPLATES[template]);
+
+            const now = new Date();
+            setCreatedAt(formatDatetimeLocal(now));
         }
     }, [template, id]);
+
     useEffect(() => {
         if (id) {
             const fetchBlog = async () => {
@@ -185,6 +216,13 @@ const BlogForm: React.FC = () => {
                         setCategory(data.category);
                         setTags(data.tags.split(","));
                         setContent(data.content);
+                        if (data.created_at) {
+                            const dt = new Date(data.created_at);
+                            setCreatedAt(formatDatetimeLocal(dt));
+                        } else {
+                            setCreatedAt(formatDatetimeLocal(new Date()));
+                        }
+
                     } else {
                         setError("未找到博客数据");
                     }
@@ -215,10 +253,12 @@ const BlogForm: React.FC = () => {
         setIsSubmitting(true);
         try {
             if (id) {
-                await updateBlog(Number(id), { title, content, category, tags: tags.join(",") });
+                await updateBlog(Number(id), { title, content, category, tags: tags.join(","), created_at: new Date(createdAt).toISOString() });
+
                 showNotification("更新成功！", "success");
             } else {
-                await createBlog({ title, content, category, tags: tags.join(",") });
+                await createBlog({ title, content, category, tags: tags.join(","), created_at: new Date(createdAt).toISOString() });
+
                 showNotification("创建成功！", "success");
             }
 
@@ -270,6 +310,15 @@ const BlogForm: React.FC = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     variant="outlined"
+                />
+                <TextField
+                    label="创建时间"
+                    type="datetime-local"
+                    fullWidth
+                    margin="normal"
+                    value={createdAt}
+                    onChange={(e) => setCreatedAt(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
                 />
 
                 {/* 分类 */}

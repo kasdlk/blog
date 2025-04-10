@@ -143,11 +143,20 @@ func (c *blogController) GetBlogsPaginated(ctx *gin.Context) {
 		Order("blog.created_at DESC").
 		Limit(limit).
 		Offset(offset)
+
 	if date != "" {
 		startDate, _ := time.Parse("2006-01-02", date)
 		endDate := startDate.AddDate(0, 0, 1).Add(-time.Nanosecond)
 		dataQuery = dataQuery.Where("blog.created_at BETWEEN ? AND ?", startDate, endDate)
 	}
+	userIDStr := ctx.Query("userId")
+	if userIDStr != "" {
+		if userID, err := strconv.Atoi(userIDStr); err == nil {
+			query = query.Where("user_id = ?", userID)
+			dataQuery = dataQuery.Where("blog.user_id = ?", userID)
+		}
+	}
+
 	if err := dataQuery.Scan(&blogs).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blogs"})
 		return

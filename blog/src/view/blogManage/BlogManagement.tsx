@@ -13,7 +13,7 @@ import {
     List,
     Card,
     CardContent,
-    Pagination,
+    Pagination, FormControl, InputLabel, Select, MenuItem,
 } from "@mui/material";
 
 // ===== MUI Date Pickers (v6+) =====
@@ -22,6 +22,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { Dayjs } from "dayjs";
 import removeMarkdown from "remove-markdown";
+import { getAllUsers, UserProfile } from "../../api/user";
 
 // 定义接口返回类型（参考前端 API 文件中的定义）
 export interface BlogsResponse {
@@ -42,6 +43,8 @@ const BlogManagement: React.FC = () => {
     // 分页状态（当前页码、总页数）
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [userList, setUserList] = useState<UserProfile[]>([]);
 
     // 获取博客数据（始终调用分页接口）
     const fetchBlogs = async (pageNumber = page, date?: Dayjs | null) => {
@@ -49,13 +52,14 @@ const BlogManagement: React.FC = () => {
         try {
             let dateStr: string | undefined;
             if (date) {
-                // 将 Dayjs 转成 JS Date，再转成 "YYYY-MM-DD"
                 const jsDate = date.toDate();
                 dateStr = new Date(jsDate.getTime() - jsDate.getTimezoneOffset() * 60000)
                     .toISOString()
                     .slice(0, 10);
             }
-            const response: BlogsResponse = await getBlogsPaginated(pageNumber, dateStr);
+
+            // 这里加上 selectedUserId
+            const response: BlogsResponse = await getBlogsPaginated(pageNumber, dateStr, selectedUserId || undefined);
             const blogsData = response.data || [];
             setBlogs(blogsData);
             setTotalPages(response.totalPages);
@@ -73,6 +77,17 @@ const BlogManagement: React.FC = () => {
         fetchBlogs(page, filterDate);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, filterDate]);
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const users = await getAllUsers();
+                setUserList(users);
+            } catch (err) {
+                console.error("获取用户失败:", err);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     // 点击查询时重置页码
     const handleQueryByDate = () => {
@@ -125,6 +140,25 @@ const BlogManagement: React.FC = () => {
                                 }}
                             />
                         </LocalizationProvider>
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                            <InputLabel>员工</InputLabel>
+                            <Select
+                                value={selectedUserId || ""}
+                                label="员工"
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    setSelectedUserId(val || null);
+                                    setPage(1);
+                                }}
+                            >
+                                <MenuItem value="">全部</MenuItem>
+                                {userList.map((user) => (
+                                    <MenuItem key={user.id} value={user.id}>
+                                        {user.nickname}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
 
                         <Button variant="contained" onClick={handleQueryByDate}>
                             查询

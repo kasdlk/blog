@@ -15,6 +15,14 @@ export interface Blog {
     nickname?: string;
 }
 
+// 博客提交表单数据结构（用于创建和更新）
+export interface BlogPayload {
+    title: string;
+    content: string;
+    category: string;
+    tags?: string;
+    created_at?: string;
+}
 
 
 // 博客目录数据结构：按年月分组
@@ -30,12 +38,16 @@ export interface BlogsResponse {
 
 export const getBlogsPaginated = async (
     page: number,
-    date?: string
+    date?: string,
+    userId?: number
 ): Promise<BlogsResponse> => {
     try {
         let url = `/blog/paginated?page=${page}`;
         if (date) {
             url += `&date=${encodeURIComponent(date)}`;
+        }
+        if (userId) {
+            url += `&userId=${userId}`;
         }
         const response = await api.get<BlogsResponse>(url);
         return response.data;
@@ -95,7 +107,7 @@ export const getBlogDetail = async (id: number): Promise<Blog | null> => {
 
 // 创建博客，调用 POST /blog
 export const createBlog = async (
-    blog: { title: string; content: string; category: string; tags?: string }
+    blog: BlogPayload
 ): Promise<Blog | null> => {
     try {
         const response = await api.post<Blog>("/blog", blog);
@@ -106,10 +118,11 @@ export const createBlog = async (
     }
 };
 
+
 // 更新博客，调用 PUT /blog/:id
 export const updateBlog = async (
     id: number,
-    blog: { title?: string; content?: string; category?: string; tags?: string }
+    blog: Partial<BlogPayload> // 使用 Partial 支持只更新部分字段
 ): Promise<Blog | null> => {
     try {
         const response = await api.put<Blog>(`/blog/${id}`, blog);
@@ -119,6 +132,7 @@ export const updateBlog = async (
         return null;
     }
 };
+
 
 // 删除博客，调用 DELETE /blog/:id
 export const deleteBlog = async (id: number): Promise<boolean> => {
